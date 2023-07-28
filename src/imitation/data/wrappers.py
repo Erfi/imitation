@@ -170,7 +170,7 @@ class BufferingWrapper(VecEnvWrapper):
 class RolloutInfoWrapper(gym.Wrapper):
     """Add the entire episode's rewards and observations to `info` at episode end.
 
-    Whenever done=True, `info["rollouts"]` is a dict with keys "obs" and "rews", whose
+    Whenever done=True or truncated=True, `info["rollouts"]` is a dict with keys "obs" and "rews", whose
     corresponding values hold the NumPy arrays containing the raw observations and
     rewards seen during this episode.
     """
@@ -186,20 +186,20 @@ class RolloutInfoWrapper(gym.Wrapper):
         self._rews = None
 
     def reset(self, **kwargs):
-        new_obs = super().reset(**kwargs)
+        new_obs, info = super().reset(**kwargs)
         self._obs = [new_obs]
         self._rews = []
-        return new_obs
+        return new_obs, info
 
     def step(self, action):
-        obs, rew, done, info = self.env.step(action)
+        obs, rew, terminated, truncated, info = self.env.step(action)
         self._obs.append(obs)
         self._rews.append(rew)
 
-        if done:
+        if terminated or truncated:
             assert "rollout" not in info
             info["rollout"] = {
                 "obs": np.stack(self._obs),
                 "rews": np.stack(self._rews),
             }
-        return obs, rew, done, info
+        return obs, rew, terminated, truncated, info
