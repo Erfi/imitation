@@ -372,6 +372,7 @@ def generate_trajectories(
     rng: np.random.Generator,
     *,
     deterministic_policy: bool = False,
+    render: bool = False,
 ) -> Sequence[types.TrajectoryWithRew]:
     """Generate trajectory dictionaries from a policy and an environment.
 
@@ -388,6 +389,7 @@ def generate_trajectories(
         deterministic_policy: If True, asks policy to deterministically return
             action. Note the trajectories might still be non-deterministic if the
             environment has non-determinism!
+        render: If True, it calls the environment's render() function after every step.
         rng: used for shuffling trajectories.
 
     Returns:
@@ -424,6 +426,8 @@ def generate_trajectories(
     while np.any(active):
         acts, state = get_actions(obs, state, dones)
         obs, rews, dones, infos = venv.step(acts)
+        if render:
+            venv.render()
         assert isinstance(obs, np.ndarray)
 
         # If an environment is inactive, i.e. the episode completed for that
@@ -625,6 +629,7 @@ def rollout(
     unwrap: bool = True,
     exclude_infos: bool = True,
     verbose: bool = True,
+    render: bool = False,
     **kwargs: Any,
 ) -> Sequence[types.TrajectoryWithRew]:
     """Generate policy rollouts.
@@ -652,6 +657,7 @@ def rollout(
             this field to None. Excluding `infos` can save a lot of space during
             pickles.
         verbose: If True, then print out rollout stats before saving.
+        render: If True, it calls the environment's render() function after every step.
         **kwargs: Passed through to `generate_trajectories`.
 
     Returns:
@@ -664,6 +670,7 @@ def rollout(
         venv,
         sample_until,
         rng=rng,
+        render=render,
         **kwargs,
     )
     if unwrap:
