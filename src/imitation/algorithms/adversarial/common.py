@@ -3,12 +3,14 @@ import abc
 import dataclasses
 import logging
 from typing import Callable, Iterable, Iterator, Mapping, Optional, Type, overload
+from contextlib import nullcontext
 
 import numpy as np
 import torch as th
 import torch.utils.tensorboard as thboard
 import tqdm
 from stable_baselines3.common import base_class, on_policy_algorithm, policies, vec_env
+from stable_baselines3.common.type_aliases import MaybeCallback
 from stable_baselines3.sac import policies as sac_policies
 from torch.nn import functional as F
 
@@ -111,6 +113,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         venv: vec_env.VecEnv,
         gen_algo: base_class.BaseAlgorithm,
         reward_net: reward_nets.RewardNet,
+        gen_algo_callback: MaybeCallback = None,
         demo_minibatch_size: Optional[int] = None,
         n_disc_updates_per_round: int = 2,
         log_dir: types.AnyPath = "output/",
@@ -140,6 +143,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 `venv` and `custom_logger`.
             reward_net: a Torch module that takes an observation, action and
                 next observation tensors as input and computes a reward signal.
+            gen_algo_callback: Callback(s) to be passed to gen_algo.learn().
             demo_minibatch_size: size of minibatch to calculate gradients over.
                 The gradients are accumulated until the entire batch is
                 processed before making an optimization step. This is
@@ -201,6 +205,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         self.debug_use_ground_truth = debug_use_ground_truth
         self.venv = venv
         self.gen_algo = gen_algo
+        self.gen_callback = gen_algo_callback
         self._reward_net = reward_net.to(gen_algo.device)
         self._log_dir = util.parse_path(log_dir)
 
@@ -225,13 +230,13 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         if debug_use_ground_truth:
             # Would use an identity reward fn here, but RewardFns can't see rewards.
             self.venv_wrapped = self.venv_buffering
-            self.gen_callback = None
         else:
             self.venv_wrapped = reward_wrapper.RewardVecEnvWrapper(
                 self.venv_buffering,
                 reward_fn=self.reward_train.predict_processed,
             )
-            self.gen_callback = self.venv_wrapped.make_log_callback()
+            log_callback = self.venv_wrapped.make_log_callback()
+            self._add_to_gen_callbacks(log_callback)
         self.venv_train = self.venv_wrapped
 
         self.gen_algo.set_env(self.venv_train)
@@ -308,6 +313,16 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         assert self._endless_expert_iterator is not None
         return next(self._endless_expert_iterator)
 
+    def _add_to_gen_callbacks(self, callback: MaybeCallback) -> None:
+        if self.gen_callback is None:
+            self.gen_callback = callback
+        elif isinstance(self.gen_callback, list):
+            self.gen_callback.append(callback)
+        elif isinstance(self.gen_callback, base_class.CallbackList):
+            self.gen_callback.callbacks.append(callback)
+        else:
+            self.gen_callback = [self.gen_callback, callback]
+
     def train_disc(
         self,
         *,
@@ -332,7 +347,9 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         Returns:
             Statistics for discriminator (e.g. loss, accuracy).
         """
-        with self.logger.accumulate_means("disc"):
+        with self.logger.accumulate_means("disc") if isinstance(
+            self.logger, logger.HierarchicalLogger
+        ) else nullcontext():
             # optionally write TB summaries for collected ops
             write_summaries = self._init_tensorboard and self._global_step % 20 == 0
 
@@ -403,8 +420,9 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             total_timesteps = self.gen_train_timesteps
         if learn_kwargs is None:
             learn_kwargs = {}
-
-        with self.logger.accumulate_means("gen"):
+        with self.logger.accumulate_means("gen") if isinstance(
+            self.logger, logger.HierarchicalLogger
+        ) else nullcontext():
             self.gen_algo.learn(
                 total_timesteps=total_timesteps,
                 reset_num_timesteps=False,
