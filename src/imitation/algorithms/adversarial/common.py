@@ -2,7 +2,16 @@
 import abc
 import dataclasses
 import logging
-from typing import Callable, Iterable, Iterator, Mapping, Optional, Type, overload
+from typing import (
+    Union,
+    Callable,
+    Iterable,
+    Iterator,
+    Mapping,
+    Optional,
+    Type,
+    overload,
+)
 from contextlib import nullcontext
 
 import numpy as np
@@ -12,12 +21,14 @@ import tqdm
 from stable_baselines3.common import base_class, on_policy_algorithm, policies, vec_env
 from stable_baselines3.common.type_aliases import MaybeCallback
 from stable_baselines3.sac import policies as sac_policies
+from stable_baselines3.common.logger import Logger as SB3Logger
 from torch.nn import functional as F
 
 from imitation.algorithms import base
 from imitation.data import buffer, rollout, types, wrappers
 from imitation.rewards import reward_nets, reward_wrapper
 from imitation.util import logger, networks, util
+from imitation.util.util import append_to_callbacks
 
 
 def compute_train_stats(
@@ -121,7 +132,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         disc_opt_kwargs: Optional[Mapping] = None,
         gen_train_timesteps: Optional[int] = None,
         gen_replay_buffer_capacity: Optional[int] = None,
-        custom_logger: Optional[logger.HierarchicalLogger] = None,
+        custom_logger: Optional[Union[logger.HierarchicalLogger, SB3Logger]] = None,
         init_tensorboard: bool = False,
         init_tensorboard_graph: bool = False,
         debug_use_ground_truth: bool = False,
@@ -236,7 +247,9 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 reward_fn=self.reward_train.predict_processed,
             )
             log_callback = self.venv_wrapped.make_log_callback()
-            self._add_to_gen_callbacks(log_callback)
+            self.gen_callback = append_to_callbacks(
+                callbacks=self.gen_callback, new=log_callback
+            )
         self.venv_train = self.venv_wrapped
 
         self.gen_algo.set_env(self.venv_train)
@@ -312,16 +325,6 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
     def _next_expert_batch(self) -> Mapping:
         assert self._endless_expert_iterator is not None
         return next(self._endless_expert_iterator)
-
-    def _add_to_gen_callbacks(self, callback: MaybeCallback) -> None:
-        if self.gen_callback is None:
-            self.gen_callback = callback
-        elif isinstance(self.gen_callback, list):
-            self.gen_callback.append(callback)
-        elif isinstance(self.gen_callback, base_class.CallbackList):
-            self.gen_callback.callbacks.append(callback)
-        else:
-            self.gen_callback = [self.gen_callback, callback]
 
     def train_disc(
         self,

@@ -28,8 +28,30 @@ import torch as th
 from gymnasium.wrappers import TimeLimit
 from stable_baselines3.common import monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
+from stable_baselines3.common.type_aliases import MaybeCallback
+from stable_baselines3.common.callbacks import CallbackList
+
 
 from imitation.data.types import AnyPath
+
+
+def append_to_callbacks(callbacks: MaybeCallback, new: MaybeCallback) -> MaybeCallback:
+    """
+    Add a callback to the callback list.
+    """
+    if new is None:
+        return callbacks
+
+    if callbacks is None:
+        return new
+    elif isinstance(callbacks, list):
+        callbacks.append(new)
+        return callbacks
+    elif isinstance(callbacks, CallbackList):
+        callbacks.callbacks.append(new)
+        return callbacks
+    else:
+        return [callbacks, new]
 
 
 def oric(x: np.ndarray) -> np.ndarray:

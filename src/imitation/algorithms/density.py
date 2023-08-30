@@ -7,12 +7,14 @@ then rewards the agent for following that estimate.
 import enum
 import itertools
 from collections.abc import Mapping
-from typing import Any, Dict, Iterable, List, Optional, cast
+from typing import Any, Dict, Iterable, List, Union, Optional, cast
 
 import numpy as np
 from gymnasium.spaces.utils import flatten
 from sklearn import neighbors, preprocessing
 from stable_baselines3.common import base_class, vec_env
+from stable_baselines3.common.type_aliases import MaybeCallback
+from stable_baselines3.common.logger import Logger as SB3Logger
 
 from imitation.algorithms import base
 from imitation.data import rollout, types, wrappers
@@ -66,9 +68,12 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         kernel: str = "gaussian",
         kernel_bandwidth: float = 0.5,
         rl_algo: Optional[base_class.BaseAlgorithm] = None,
+        rl_algo_callback: MaybeCallback = None,
         is_stationary: bool = True,
         standardise_inputs: bool = True,
-        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        custom_logger: Optional[
+            Union[imit_logger.HierarchicalLogger, SB3Logger]
+        ] = None,
         allow_variable_horizon: bool = False,
     ):
         """Builds DensityAlgorithm.
@@ -125,12 +130,16 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         self.rng = rng
 
         self.rl_algo = rl_algo
+        self.rl_algo_callback = rl_algo_callback
         self.buffering_wrapper = wrappers.BufferingWrapper(self.venv)
         self.venv_wrapped = reward_wrapper.RewardVecEnvWrapper(
             self.buffering_wrapper,
             self,
         )
         self.wrapper_callback = self.venv_wrapped.make_log_callback()
+        self.rl_algo_callback = util.append_to_callbacks(
+            self.rl_algo_callback, self.wrapper_callback
+        )
 
     def _get_demo_from_batch(
         self,
@@ -359,7 +368,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
             # ensure we can see total steps for all
             # learn() calls, not just for this call
             reset_num_timesteps=False,
-            callback=self.wrapper_callback,
+            callback=self.rl_algo_callback,
             **kwargs,
         )
         trajs, ep_lens = self.buffering_wrapper.pop_trajectories()
