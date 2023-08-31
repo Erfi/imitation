@@ -124,7 +124,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         venv: vec_env.VecEnv,
         gen_algo: base_class.BaseAlgorithm,
         reward_net: reward_nets.RewardNet,
-        gen_algo_callback: MaybeCallback = None,
+        gen_algo_callback: Optional[MaybeCallback] = None,
         demo_minibatch_size: Optional[int] = None,
         n_disc_updates_per_round: int = 2,
         log_dir: types.AnyPath = "output/",
