@@ -49,6 +49,11 @@ def compute_train_stats(
         A mapping from statistic names to float values.
     """
     with th.no_grad():
+        if th.any(th.isnan(disc_logits_expert_is_high)):
+            print("disc_logits_expert_is_high contains NaNs, replacing with 0.0")
+            disc_logits_expert_is_high = th.nan_to_num(
+                disc_logits_expert_is_high, nan=0.0, posinf=0.0, neginf=0.0
+            )
         # Logits of the discriminator output; >0 for expert samples, <0 for generator.
         bin_is_generated_pred = disc_logits_expert_is_high < 0
         # Binary label, so 1 is for expert, 0 is for generator.
@@ -80,8 +85,12 @@ def compute_train_stats(
         _n_gen_or_1 = max(1, n_generated)
         generated_acc = _n_pred_gen / float(_n_gen_or_1)
 
-        label_dist = th.distributions.Bernoulli(logits=disc_logits_expert_is_high)
-        entropy = th.mean(label_dist.entropy())
+        try:
+            label_dist = th.distributions.Bernoulli(logits=disc_logits_expert_is_high)
+            entropy = th.mean(label_dist.entropy())
+        except ValueError as e:
+            print(f"ValueError in computing entropy:{e}. Setting entropy to 0.0")
+            entropy = th.zeros(1).squeeze()
 
     return {
         "disc_loss": float(th.mean(disc_loss)),
