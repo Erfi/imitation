@@ -26,7 +26,7 @@ import gymnasium as gym
 import numpy as np
 import torch as th
 from gymnasium.wrappers import TimeLimit
-from stable_baselines3.common import monitor
+from stable_baselines3.common import monitor, policies
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 from stable_baselines3.common.type_aliases import MaybeCallback
 from stable_baselines3.common.callbacks import CallbackList
@@ -52,6 +52,16 @@ def append_to_callbacks(callbacks: MaybeCallback, new: MaybeCallback) -> MaybeCa
         return callbacks
     else:
         return [callbacks, new]
+
+
+def save_policy(policy: policies.BasePolicy, policy_path: AnyPath) -> None:
+    """Save policy to a path.
+
+    Args:
+        policy: policy to save.
+        policy_path: path to save policy to.
+    """
+    th.save(policy, parse_path(policy_path))
 
 
 def oric(x: np.ndarray) -> np.ndarray:
@@ -467,3 +477,26 @@ def parse_optional_path(
         return None
     else:
         return parse_path(path, allow_relative, base_directory)
+
+
+def split_in_half(x: int) -> Tuple[int, int]:
+    """Split an integer in half, rounding up.
+
+    This is to ensure that the two halves sum to the original integer.
+
+    Args:
+        x: The integer to split.
+
+    Returns:
+        A tuple containing the two halves of `x`.
+    """
+    half = x // 2
+    return half, x - half
+
+
+def clear_screen() -> None:
+    """Clears the console screen."""
+    if os.name == "nt":  # Windows
+        os.system("cls")
+    else:
+        os.system("clear")

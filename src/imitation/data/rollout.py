@@ -8,6 +8,7 @@ from typing import (
     Callable,
     Dict,
     Hashable,
+    Iterable,
     List,
     Mapping,
     Optional,
@@ -531,7 +532,7 @@ def rollout_stats(
 
 
 def flatten_trajectories(
-    trajectories: Sequence[types.Trajectory],
+    trajectories: Iterable[types.Trajectory],
 ) -> types.Transitions:
     """Flatten a series of trajectory dictionaries into arrays.
 
