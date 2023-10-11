@@ -15,13 +15,9 @@ IS_NOT_WINDOWS = os.name != "nt"
 
 PARALLEL_REQUIRE = ["ray[debug,tune]~=2.0.0"]
 ATARI_REQUIRE = [
-    "opencv-python",
-    "ale-py==0.7.4",
-    "pillow",
-    "autorom[accept-rom-license]~=0.6.0",
+    "seals[atari]~=0.2.1",
 ]
-PYTYPE = ["pytype==2022.7.26"] if IS_NOT_WINDOWS else []
-STABLE_BASELINES3 = "stable-baselines3~=2.0.0"
+PYTYPE = ["pytype==2023.9.27"] if IS_NOT_WINDOWS else []
 
 # Note: the versions of the test and doc requirements should be tightly pinned to known
 #   working versions to make our CI/CD pipeline as stable as possible.
@@ -46,11 +42,13 @@ TESTS_REQUIRE = (
         # TODO: upgrade jupyter-client once
         #  https://github.com/jupyter/jupyter_client/issues/637 is fixed
         "jupyter-client~=6.1.12",
+        "moviepy~=1.0.3",
         "mypy~=0.990",
         "pandas~=1.4.3",
         "pytest~=7.1.2",
         "pytest-cov~=3.0.0",
         "pytest-notebook==0.8.0",
+        "pytest-timeout~=2.1.0",
         "pytest-xdist~=2.5.0",
         "scipy~=1.9.0",
         "wandb==0.12.21",
@@ -184,7 +182,7 @@ setup(
     python_requires=">=3.8.0",
     packages=find_packages("src"),
     package_dir={"": "src"},
-    package_data={"imitation": ["py.typed", "envs/examples/airl_envs/assets/*.xml"]},
+    package_data={"imitation": ["py.typed", "scripts/config/tuned_hps/*.json"]},
     # Note: while we are strict with our test and doc requirement versions, we try to
     #   impose as little restrictions on the install requirements as possible. Try to
     #   encode only known incompatibilities here. This prevents nasty dependency issues
@@ -197,11 +195,12 @@ setup(
         "tqdm",
         "rich",
         "scikit-learn>=0.21.2",
-        "seals~=0.1.5",
-        STABLE_BASELINES3,
+        "seals~=0.2.1",
+        "stable-baselines3~=2.0",
         "sacred>=0.8.4",
         "tensorboard>=1.14",
-        "huggingface_sb3~=2.3",
+        "huggingface_sb3~=3.0",
+        "optuna>=3.0.1",
         "datasets>=2.8.0",
     ],
     tests_require=TESTS_REQUIRE,

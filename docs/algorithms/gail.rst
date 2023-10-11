@@ -21,7 +21,6 @@ Detailed example notebook: :doc:`../tutorials/3_train_gail`
 
     import numpy as np
     import gymnasium as gym
-    import seals  # noqa: F401  # needed to load "seals/" environments
     from stable_baselines3 import PPO
     from stable_baselines3.common.evaluation import evaluate_policy
     from stable_baselines3.ppo import MlpPolicy
@@ -37,7 +36,7 @@ Detailed example notebook: :doc:`../tutorials/3_train_gail`
     SEED = 42
 
     env = make_vec_env(
-        "seals/CartPole-v0",
+        "seals:seals/CartPole-v0",
         rng=np.random.default_rng(SEED),
         n_envs=8,
         post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # to compute rollouts

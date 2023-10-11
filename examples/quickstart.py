@@ -5,7 +5,6 @@ Refer to the jupyter notebooks for more detailed examples of how to use the algo
 
 import gymnasium as gym
 import numpy as np
-import seals  # needed to load "seals/" environments    # noqa: F401
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.ppo import MlpPolicy
@@ -18,7 +17,7 @@ from imitation.util.util import make_vec_env
 
 rng = np.random.default_rng(0)
 env = make_vec_env(
-    "seals/CartPole-v0",
+    "seals:seals/CartPole-v0",
     rng=rng,
     post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # for computing rollouts
 )
