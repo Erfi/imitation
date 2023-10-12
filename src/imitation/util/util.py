@@ -279,6 +279,8 @@ def safe_to_tensor(array: Union[np.ndarray, th.Tensor], **kwargs) -> th.Tensor:
         A PyTorch tensor with the same content as `array`.
     """
     if isinstance(array, th.Tensor):
+        if "device" in kwargs and array.device != kwargs["device"]:
+            array = array.to(kwargs["device"])
         return array
 
     if not array.flags.writeable:
