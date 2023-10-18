@@ -313,7 +313,7 @@ class BCEvalCallback:
 
                 np.savez(
                     os.path.join(self.log_dir, "evaluations.npz"),
-                    timesteps=self._num_steps,
+                    timesteps=self.evaluations_timesteps,
                     results=self.evaluations_results,
                     ep_lengths=self.evaluations_length,
                 )
